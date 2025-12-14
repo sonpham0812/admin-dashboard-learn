@@ -3,19 +3,22 @@ import Header from "./components/Layout/Header";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import Sidebar from "./components/Layout/Sidebar";
 import AddProduct from "./pages/Products/AddProduct";
+import Layout from "./components/Layout";
+import routers from "./config/routers";
 
 function App() {
   return (
     <BrowserRouter>
-      <div className="relative mx-8">
-        <Header />
-        <div className="flex flex-row">
-          <Sidebar />
-          <Routes>
-            <Route element={<AddProduct />} path="add-product" />
-          </Routes>
-        </div>
-      </div>
+      <Layout>
+        <Routes>
+          {routers.map((route, index) => {
+            const Page = route.component;
+            return (
+              <Route key={index} exact path={route.path} element={<Page />} />
+            );
+          })}
+        </Routes>
+      </Layout>
     </BrowserRouter>
   );
 }

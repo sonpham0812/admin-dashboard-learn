@@ -1,4 +1,3 @@
-import React, { useState } from "react";
 import { Layout, Menu, Button } from "antd";
 import {
   MenuFoldOutlined,
@@ -15,8 +14,7 @@ import { Link, useLocation } from "react-router-dom";
 const { Sider } = Layout;
 const { SubMenu, Item } = Menu;
 
-export default function Sidebar() {
-  const [collapsed, setCollapsed] = useState(false);
+export default function Sidebar({ isCollapsed }) {
   const location = useLocation();
 
   const selectedKey = (() => {
@@ -31,45 +29,24 @@ export default function Sidebar() {
   })();
 
   return (
-    <div className="h-screen absolute top-0 left-0">
+    <div className="h-screen fixed top-16">
       <Sider
         trigger={null}
         collapsible
-        collapsed={collapsed}
+        collapsed={isCollapsed}
         collapsedWidth={80}
         style={{
           background: "transparent",
         }}
       >
         <div className="flex flex-col h-full">
-          {/* Logo + Toggle */}
-          <div className="flex items-center justify-between px-4 py-4">
-            <div className="flex items-center gap-3">
-              <div className="flex items-center justify-center w-10 h-10 rounded-full text-white font-bold shadow"></div>
-              {!collapsed && (
-                <div className="flex flex-col">
-                  <span className="text-xl font-bold text-blue-600">
-                    Falcon
-                  </span>
-                  <span className="text-xs text-gray-400">Admin panel</span>
-                </div>
-              )}
-            </div>
-            <Button
-              type="text"
-              onClick={() => setCollapsed(!collapsed)}
-              icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
-              className="!text-gray-600"
-            />
-          </div>
-
           {/* Menu */}
-          <div className="flex-1 overflow-auto px-2 py-4">
+          <div className="flex-1 overflow-auto py-4">
             <Menu
               mode="inline"
-              inlineCollapsed={collapsed}
+              inlineCollapsed={isCollapsed}
               selectedKeys={[selectedKey]}
-              defaultOpenKeys={["ecommerce"]}
+              defaultOpenKeys={["product"]}
               style={{ borderRight: "none", backgroundColor: "transparent" }}
             >
               <Item key="/dashboard" icon={<DashboardOutlined />}>

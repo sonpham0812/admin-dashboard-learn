@@ -1,11 +1,18 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Input, Select, Upload, Button, Form, InputNumber, Card } from "antd";
 import { UploadOutlined } from "@ant-design/icons";
+import { productServices } from "../../api/products";
 
 const { TextArea } = Input;
 
 export default function AddProduct() {
   const [images, setImages] = useState([]);
+
+  useEffect(() => {
+    productServices.getProducts().then((res) => {
+      console.log(res);
+    });
+  }, []);
 
   const handleUpload = ({ fileList }) => {
     setImages(fileList);
@@ -30,12 +37,11 @@ export default function AddProduct() {
   };
 
   return (
-    <div className="p-10 max-w-5xl ml-auto min-h-screen">
-      <h1 className="text-4xl font-bold mb-10 text-gray-800 text-center">
+    <div className="flex-1 min-h-screen">
+      <div className="text-3xl font-bold mb-8 text-gray-800 text-center">
         Add Product
-      </h1>
-
-      <Card className="shadow-xl rounded-2xl p-6">
+      </div>
+      <div className="shadow-xl rounded-2xl p-6 bg-[#fff]">
         <Form
           layout="vertical"
           onFinish={onFinish}
@@ -154,7 +160,7 @@ export default function AddProduct() {
             </Button>
           </div>
         </Form>
-      </Card>
+      </div>
     </div>
   );
 }
