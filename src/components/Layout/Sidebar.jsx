@@ -8,6 +8,7 @@ import {
   AppstoreOutlined,
   ProfileOutlined,
   PlusOutlined,
+  EditOutlined,
 } from "@ant-design/icons";
 import { Link, useLocation } from "react-router-dom";
 
@@ -19,12 +20,11 @@ export default function Sidebar({ isCollapsed }) {
 
   const selectedKey = (() => {
     const p = location?.pathname || "/";
-    if (p.includes("/product-grid")) return "/product-grid";
     if (p.includes("/product-list")) return "/product-list";
-    if (p.includes("/product-details")) return "/product-details";
     if (p.includes("/add-product")) return "/add-product";
     if (p.includes("/ecommerce")) return "/ecommerce";
     if (p.includes("/dashboard")) return "/dashboard";
+    if (p.includes("/edit-product")) return "/edit-product";
     return "/dashboard";
   })();
 
@@ -60,14 +60,11 @@ export default function Sidebar({ isCollapsed }) {
                 <Item key="/product-list" icon={<UnorderedListOutlined />}>
                   <Link to="/product-list">Product list</Link>
                 </Item>
-                <Item key="/product-grid" icon={<AppstoreOutlined />}>
-                  <Link to="/product-grid">Product grid</Link>
-                </Item>
-                <Item key="/product-details" icon={<ProfileOutlined />}>
-                  <Link to="/product-details">Product details</Link>
-                </Item>
                 <Item key="/add-product" icon={<PlusOutlined />}>
                   <Link to="/add-product">Add product</Link>
+                </Item>
+                <Item key="/edit-product" icon={<EditOutlined />}>
+                  <Link to="/edit-product">Edit product</Link>
                 </Item>
               </SubMenu>
             </Menu>
