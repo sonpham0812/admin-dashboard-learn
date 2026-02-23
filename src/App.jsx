@@ -13,9 +13,7 @@ function App() {
         <Routes>
           {routers.map((route, index) => {
             const Page = route.component;
-            return (
-              <Route key={index} exact path={route.path} element={<Page />} />
-            );
+            return <Route key={index} path={route.path} element={<Page />} />;
           })}
         </Routes>
       </Layout>
