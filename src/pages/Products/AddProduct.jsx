@@ -1,166 +1,298 @@
 import React, { useEffect, useState } from "react";
-import { Input, Select, Upload, Button, Form, InputNumber, Card } from "antd";
-import { UploadOutlined } from "@ant-design/icons";
+import {
+  Input,
+  Select,
+  Upload,
+  Button,
+  Form,
+  InputNumber,
+  Card,
+  Divider,
+  message,
+} from "antd";
+import { UploadOutlined, PlusOutlined } from "@ant-design/icons";
 import { productServices } from "../../api/products";
+import { categoryServices } from "../../api/categories";
+import { useNavigate, useParams } from "react-router-dom";
 
 const { TextArea } = Input;
 
+// save image to base 64
+const toBase64 = (file) =>
+  new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = reject;
+  });
+
+const normFile = (e) => {
+  if (Array.isArray(e)) return e;
+  return e?.fileList;
+};
+
 export default function AddProduct() {
-  const [images, setImages] = useState([]);
+  const [form] = Form.useForm();
+  const navigate = useNavigate();
+  const { id } = useParams();
+  const isEdit = Boolean(id);
+
+  const [tags, setTags] = useState([]);
+  const [categories, setCategories] = useState([]);
+  const [loadingCategory, setLoadingCategory] = useState(false);
+  const [loadingProduct, setLoadingProduct] = useState(false);
 
   useEffect(() => {
-    productServices.getProducts().then((res) => {
-      console.log(res);
-    });
+    const fetchCategories = async () => {
+      try {
+        setLoadingCategory(true);
+        const data = await categoryServices.getAll();
+        setCategories(
+          data.map((item) => ({
+            label: item.name,
+            value: item.id,
+            slug: item.slug,
+          })),
+        );
+      } catch {
+        message.error("Failed to load categories");
+      } finally {
+        setLoadingCategory(false);
+      }
+    };
+
+    fetchCategories();
   }, []);
 
-  const handleUpload = ({ fileList }) => {
-    setImages(fileList);
-  };
+  useEffect(() => {
+    if (!isEdit) return;
 
-  const categories = [
-    { label: "Computer & Accessories", value: "computer" },
-    { label: "Smartphone", value: "smartphone" },
-    { label: "Tablet", value: "tablet" },
-    { label: "Camera", value: "camera" },
-  ];
+    const fetchProduct = async () => {
+      try {
+        setLoadingProduct(true);
+        const product = await productServices.getProductDetails(id);
 
-  const brands = [
-    { label: "Apple", value: "apple" },
-    { label: "Samsung", value: "samsung" },
-    { label: "Dell", value: "dell" },
-    { label: "Lenovo", value: "lenovo" },
-  ];
+        setTags(product.tags || []);
 
-  const onFinish = (values) => {
-    console.log("Submitted: ", values);
+        form.setFieldsValue({
+          title: product.title,
+          brand: product.brand,
+          price: product.price,
+          stock: product.stock,
+          discount: product.discountPercentage,
+          description: product.description,
+          category: product.categoryId,
+          dimensions: product.dimensions,
+          thumbnail: [
+            {
+              uid: "-1",
+              name: "thumbnail",
+              status: "done",
+              url: product.thumbnail,
+            },
+          ],
+          images: (product.images || []).map((img, index) => ({
+            uid: index,
+            name: `image-${index}`,
+            status: "done",
+            url: img,
+          })),
+        });
+      } catch {
+        message.error("Failed to load product");
+      } finally {
+        setLoadingProduct(false);
+      }
+    };
+
+    fetchProduct();
+  }, [id, isEdit, form]);
+
+  useEffect(() => {
+    if (!isEdit) {
+      form.resetFields();
+      setTags([]);
+    }
+  }, [isEdit, form]);
+
+  const handleSubmit = async (values) => {
+    try {
+      const imagesBase64 = await Promise.all(
+        values.images.map((f) =>
+          f.originFileObj ? toBase64(f.originFileObj) : f.url,
+        ),
+      );
+
+      const thumbnailBase64 = values.thumbnail[0].originFileObj
+        ? await toBase64(values.thumbnail[0].originFileObj)
+        : values.thumbnail[0].url;
+
+      const categoryItem = categories.find(
+        (item) => item.value === values.category,
+      );
+
+      const payload = {
+        title: values.title,
+        description: values.description,
+        price: values.price,
+        discountPercentage: values.discount || 0,
+        stock: values.stock,
+        category: categoryItem.slug,
+        categoryId: categoryItem.value,
+        brand: values.brand || "",
+        tags,
+        dimensions: values.dimensions || {},
+        images: imagesBase64,
+        thumbnail: thumbnailBase64,
+      };
+
+      if (isEdit) {
+        await productServices.updateProduct(id, payload);
+        message.success("Update product successfully");
+      } else {
+        await productServices.addProduct({
+          ...payload,
+          rating: 0,
+          meta: { createdAt: new Date().toISOString() },
+        });
+        message.success("Add product successfully");
+      }
+
+      navigate("/product-list");
+    } catch (error) {
+      console.error(error);
+      message.error("Submit failed");
+    }
   };
 
   return (
-    <div className="flex-1 min-h-screen">
-      <div className="text-3xl font-bold mb-8 text-gray-800 text-center">
-        Add Product
-      </div>
-      <div className="shadow-xl rounded-2xl p-6 bg-[#fff]">
+    <div className="min-h-screen">
+      <Card className="max-w-5xl mx-auto shadow-2xl rounded-3xl">
+        <h1 className="text-3xl font-bold mb-6">
+          {isEdit ? "Edit Product" : "Add New Product"}
+        </h1>
+
         <Form
+          form={form}
           layout="vertical"
-          onFinish={onFinish}
-          className="grid grid-cols-1 md:grid-cols-2 gap-8"
+          onFinish={handleSubmit}
+          disabled={loadingProduct}
         >
-          <Form.Item
-            name="name"
-            label="Product Name"
-            rules={[{ required: true }]}
-            className="col-span-1"
-          >
-            <Input size="large" placeholder="Enter product name" />
-          </Form.Item>
+          <Divider orientation="left">Basic Information</Divider>
 
-          <Form.Item
-            name="brand"
-            label="Brand"
-            rules={[{ required: true }]}
-            className="col-span-1"
-          >
-            <Select size="large" options={brands} placeholder="Select brand" />
-          </Form.Item>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <Form.Item
+              name="title"
+              label="Product Name"
+              rules={[{ required: true }]}
+            >
+              <Input size="large" />
+            </Form.Item>
 
-          <Form.Item
-            name="category"
-            label="Category"
-            rules={[{ required: true }]}
-            className="col-span-1"
-          >
-            <Select
-              size="large"
-              options={categories}
-              placeholder="Select category"
-            />
-          </Form.Item>
+            <Form.Item name="brand" label="Brand">
+              <Input size="large" />
+            </Form.Item>
 
-          <Form.Item
-            name="stock"
-            label="Stock Quantity"
-            rules={[{ required: true }]}
-            className="col-span-1"
-          >
-            <InputNumber
-              size="large"
-              className="w-full"
-              min={0}
-              placeholder="Enter stock quantity"
-            />
-          </Form.Item>
+            <Form.Item
+              name="category"
+              label="Category"
+              rules={[{ required: true }]}
+            >
+              <Select
+                size="large"
+                options={categories}
+                loading={loadingCategory}
+              />
+            </Form.Item>
 
-          <Form.Item
-            name="price"
-            label="Price"
-            rules={[{ required: true }]}
-            className="col-span-1"
-          >
-            <InputNumber
-              size="large"
-              className="w-full"
-              min={0}
-              placeholder="Enter price"
-            />
-          </Form.Item>
+            <Form.Item name="stock" label="Stock" rules={[{ required: true }]}>
+              <InputNumber className="w-full" min={0} />
+            </Form.Item>
 
-          <Form.Item
-            name="discount"
-            label="Discount (%)"
-            className="col-span-1"
-          >
-            <InputNumber
-              size="large"
-              className="w-full"
-              min={0}
-              max={100}
-              placeholder="Enter discount"
-            />
-          </Form.Item>
+            <Form.Item
+              name="price"
+              label="Price ($)"
+              rules={[{ required: true }]}
+            >
+              <InputNumber className="w-full" min={0} />
+            </Form.Item>
+
+            <Form.Item name="discount" label="Discount (%)">
+              <InputNumber className="w-full" min={0} max={100} />
+            </Form.Item>
+          </div>
 
           <Form.Item
             name="description"
-            label="Product Description"
+            label="Description"
             rules={[{ required: true }]}
-            className="col-span-1 md:col-span-2"
           >
-            <TextArea rows={4} placeholder="Describe the product" />
+            <TextArea rows={4} />
           </Form.Item>
 
-          <Form.Item
-            label="Product Images"
-            className="col-span-1 md:col-span-2"
-          >
-            <Upload
-              listType="picture-card"
-              multiple
-              fileList={images}
-              onChange={handleUpload}
-              beforeUpload={() => false}
-            >
-              {images.length < 8 && (
-                <div className="text-center text-gray-600">
-                  <UploadOutlined />
-                  <div>Upload</div>
-                </div>
-              )}
-            </Upload>
-          </Form.Item>
+          <Divider orientation="left">Dimensions</Divider>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <Form.Item name={["dimensions", "width"]} label="Width">
+              <InputNumber className="w-full" />
+            </Form.Item>
+            <Form.Item name={["dimensions", "height"]} label="Height">
+              <InputNumber className="w-full" />
+            </Form.Item>
+            <Form.Item name={["dimensions", "depth"]} label="Depth">
+              <InputNumber className="w-full" />
+            </Form.Item>
+          </div>
 
-          <div className="col-span-1 md:col-span-2 flex justify-center mt-6">
-            <Button
-              type="primary"
-              htmlType="submit"
-              size="large"
-              className="px-10 py-5 text-lg rounded-xl shadow"
+          <Divider orientation="left">Tags</Divider>
+          <Select
+            mode="tags"
+            style={{ width: "100%" }}
+            value={tags}
+            onChange={setTags}
+          />
+
+          <Divider orientation="left">Images</Divider>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <Form.Item
+              name="thumbnail"
+              label="Thumbnail"
+              valuePropName="fileList"
+              getValueFromEvent={normFile}
+              rules={[{ required: true }]}
             >
-              Add Product
+              <Upload
+                listType="picture-card"
+                beforeUpload={() => false}
+                maxCount={1}
+              >
+                <PlusOutlined />
+              </Upload>
+            </Form.Item>
+
+            <Form.Item
+              name="images"
+              label="Gallery Images"
+              valuePropName="fileList"
+              getValueFromEvent={normFile}
+              rules={[{ required: true }]}
+            >
+              <Upload
+                listType="picture-card"
+                multiple
+                beforeUpload={() => false}
+              >
+                <UploadOutlined />
+              </Upload>
+            </Form.Item>
+          </div>
+
+          <div className="flex justify-center mt-10">
+            <Button type="primary" size="large" htmlType="submit">
+              {isEdit ? "Update Product" : "Add Product"}
             </Button>
           </div>
         </Form>
-      </div>
+      </Card>
     </div>
   );
 }
